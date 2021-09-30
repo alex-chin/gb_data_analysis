@@ -31,7 +31,7 @@ class GBGradBoost:
 
     # функция обучения градиентного бустинга.
 
-    def gb_fit(self, n_trees, max_depth, X_train, X_test, y_train, y_test, coefs, eta):
+    def gb_fit(self, X_train, X_test, y_train, y_test, coefs, eta):
         # Деревья будем записывать в список
         trees = []
 
@@ -39,8 +39,8 @@ class GBGradBoost:
         train_errors = []
         test_errors = []
 
-        for i in range(n_trees):
-            tree = DecisionTreeRegressor(max_depth=max_depth, random_state=42)
+        for i in range(self.n_trees):
+            tree = DecisionTreeRegressor(max_depth=self.max_depth, random_state=42)
 
             # инициализируем бустинг начальным алгоритмом, возвращающим ноль,
             # поэтому первый алгоритм просто обучаем на выборке и добавляем в список
@@ -76,8 +76,8 @@ class GBGradBoost:
         с шагом {eta} на тестовой выборке: {self.mean_squared_error(y_test, test_prediction)}')
 
 
-
 from sklearn.datasets import load_diabetes
+
 X, y = load_diabetes(return_X_y=True)
 
 X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, test_size=0.25)
@@ -90,6 +90,6 @@ max_depth = 3
 # Шаг
 eta = 1
 
-gbgboost = GBGradBoost(max_depth=3, n_trees =10)
-trees, train_errors, test_errors = gbgboost.gb_fit(n_trees, max_depth, X_train, X_test, y_train, y_test, coefs, eta)
+gbgboost = GBGradBoost(max_depth=3, n_trees=10)
+trees, train_errors, test_errors = gbgboost.gb_fit(X_train, X_test, y_train, y_test, coefs, eta)
 gbgboost.evaluate_alg(X_train, X_test, y_train, y_test, trees, coefs, eta)
