@@ -10,7 +10,7 @@ class GBGradBoost:
     n_trees = 0
     max_depth = 0
 
-    def __init__(self, n_trees=10, max_depth=3):
+    def __init__(self,X, y, n_trees=10, max_depth=3):
         self.params(n_trees, max_depth)
 
     def params(self, n_trees=10, max_depth=3):
