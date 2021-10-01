@@ -9,13 +9,21 @@ import numpy as np
 class GBGradBoost:
     n_trees = 0
     max_depth = 0
+    eta = 0
+    X_train = None
+    X_test = None
+    y_train = None
+    y_test = None
 
-    def __init__(self,X, y, n_trees=10, max_depth=3):
+    def __init__(self, X, y, n_trees=10, max_depth=3, test_size=0.25):
         self.params(n_trees, max_depth)
+        # разделение выборки встроено в класс
+        self.X_train, self.X_test, self.y_train, self.y_test = model_selection.train_test_split(X, y, test_size=test_size)
 
-    def params(self, n_trees=10, max_depth=3):
+    def params(self, n_trees=10, max_depth=3, eta=1):
         self.n_trees = n_trees
         self.max_depth = max_depth
+        self.eta = eta
 
     def gb_predict(self, X, trees_list, coef_list, eta):
         # Реализуемый алгоритм градиентного бустинга будет инициализироваться нулевыми значениями,
@@ -31,7 +39,7 @@ class GBGradBoost:
 
     # функция обучения градиентного бустинга.
 
-    def gb_fit(self, X_train, X_test, y_train, y_test, coefs, eta):
+    def gb_fit(self, coefs, eta):
         # Деревья будем записывать в список
         trees = []
 
@@ -46,42 +54,42 @@ class GBGradBoost:
             # поэтому первый алгоритм просто обучаем на выборке и добавляем в список
             if len(trees) == 0:
                 # обучаем первое дерево на обучающей выборке
-                tree.fit(X_train, y_train)
+                tree.fit(self.X_train, self.y_train)
 
-                train_errors.append(self.mean_squared_error(y_train, self.gb_predict(X_train, trees, coefs, eta)))
-                test_errors.append(self.mean_squared_error(y_test, self.gb_predict(X_test, trees, coefs, eta)))
+                train_errors.append(self.mean_squared_error(self.y_train, self.gb_predict(self.X_train, trees, coefs, eta)))
+                test_errors.append(self.mean_squared_error(self.y_test, self.gb_predict(self.X_test, trees, coefs, eta)))
             else:
                 # Получим ответы на текущей композиции
-                target = self.gb_predict(X_train, trees, coefs, eta)
+                target = self.gb_predict(self.X_train, trees, coefs, eta)
 
                 # алгоритмы начиная со второго обучаем на сдвиг
-                tree.fit(X_train, self.bias(y_train, target))
+                tree.fit(self.X_train, self.bias(self.y_train, target))
 
-                train_errors.append(self.mean_squared_error(y_train, self.gb_predict(X_train, trees, coefs, eta)))
-                test_errors.append(self.mean_squared_error(y_test, self.gb_predict(X_test, trees, coefs, eta)))
+                train_errors.append(self.mean_squared_error(self.y_train, self.gb_predict(self.X_train, trees, coefs, eta)))
+                test_errors.append(self.mean_squared_error(self.y_test, self.gb_predict(self.X_test, trees, coefs, eta)))
 
             trees.append(tree)
 
         return trees, train_errors, test_errors
 
-    def evaluate_alg(self, X_train, X_test, y_train, y_test, trees, coefs, eta):
-        train_prediction = self.gb_predict(X_train, trees, coefs, eta)
+    def evaluate_alg(self, trees, coefs, eta):
+        train_prediction = self.gb_predict(self.X_train, trees, coefs, eta)
 
         print(f'Ошибка алгоритма из {self.n_trees} деревьев глубиной {self.max_depth} \
-        с шагом {eta} на тренировочной выборке: {self.mean_squared_error(y_train, train_prediction)}')
+        с шагом {eta} на тренировочной выборке: {self.mean_squared_error(self.y_train, train_prediction)}')
 
-        test_prediction = self.gb_predict(X_test, trees, coefs, eta)
+        test_prediction = self.gb_predict(self.X_test, trees, coefs, eta)
 
         print(f'Ошибка алгоритма из {self.n_trees} деревьев глубиной {self.max_depth} \
-        с шагом {eta} на тестовой выборке: {self.mean_squared_error(y_test, test_prediction)}')
+        с шагом {eta} на тестовой выборке: {self.mean_squared_error(self.y_test, test_prediction)}')
 
 
 from sklearn.datasets import load_diabetes
 
 X, y = load_diabetes(return_X_y=True)
-
-X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, test_size=0.25)
-# Число деревьев в ансамбле
+#
+# X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, test_size=0.25)
+# # Число деревьев в ансамбле
 n_trees = 10
 # для простоты примем коэффициенты равными 1
 coefs = [1] * n_trees
@@ -90,6 +98,6 @@ max_depth = 3
 # Шаг
 eta = 1
 
-gbgboost = GBGradBoost(max_depth=3, n_trees=10)
-trees, train_errors, test_errors = gbgboost.gb_fit(X_train, X_test, y_train, y_test, coefs, eta)
-gbgboost.evaluate_alg(X_train, X_test, y_train, y_test, trees, coefs, eta)
+gbgboost = GBGradBoost(X, y, max_depth=3, n_trees=10)
+trees, train_errors, test_errors = gbgboost.gb_fit(coefs, eta)
+gbgboost.evaluate_alg(trees, coefs, eta)
