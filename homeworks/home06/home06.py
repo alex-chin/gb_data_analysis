@@ -60,6 +60,11 @@ class GBGradBoost:
         return np.array(
             [sum([self.eta * coef * alg.predict([x])[0] for alg, coef in zip(self.trees_list, self.coefs)]) for x in X])
 
+    def calc_error(self):
+        # расчет ошибки на обучающей и тестовой выборке
+        self.train_errors.append(self.func_loss.loss(self.y_train, self.gb_predict(self.X_train)))
+        self.test_errors.append(self.func_loss.loss(self.y_test, self.gb_predict(self.X_test)))
+
     def gb_fit(self):
         # Деревья будем записывать в список
         self.trees_list = []
@@ -67,9 +72,6 @@ class GBGradBoost:
         # Будем записывать ошибки на обучающей и тестовой выборке на каждой итерации в список
         self.train_errors = []
         self.test_errors = []
-        def calc_error(reest, x, y):
-            pass
-
 
         for i in range(self.n_trees):
             tree = DecisionTreeRegressor(max_depth=self.max_depth, random_state=42)
@@ -80,8 +82,7 @@ class GBGradBoost:
                 # обучаем первое дерево на обучающей выборке
                 tree.fit(self.X_train, self.y_train)
 
-                self.train_errors.append(self.func_loss.loss(self.y_train, self.gb_predict(self.X_train)))
-                self.test_errors.append(self.func_loss.loss(self.y_test, self.gb_predict(self.X_test)))
+                self.calc_error()
             else:
                 # Получим ответы на текущей композиции
                 target = self.gb_predict(self.X_train)
@@ -89,8 +90,7 @@ class GBGradBoost:
                 # алгоритмы начиная со второго обучаем на сдвиг
                 tree.fit(self.X_train, self.func_loss.grad(self.y_train, target))
 
-                self.train_errors.append(self.func_loss.loss(self.y_train, self.gb_predict(self.X_train)))
-                self.test_errors.append(self.func_loss.loss(self.y_test, self.gb_predict(self.X_test)))
+                self.calc_error()
 
             self.trees_list.append(tree)
 
