@@ -14,6 +14,7 @@ class FuncDist(ABC):
 
 class GbKnn:
     eta = 0
+    qu = 0
     k_neighbours = 0
 
     X_train = None
@@ -23,19 +24,20 @@ class GbKnn:
 
     func_dist = None
 
-    def __init__(self, X, y, func_dist: FuncDist, k_neighbours=1, test_size=0.25, eta=1):
-        self.params(k_neighbours=k_neighbours, eta=eta)
+    def __init__(self, X, y, func_dist: FuncDist, k_neighbours=1, test_size=0.25, eta=1, qu=0.5):
+        self.params(k_neighbours=k_neighbours, eta=eta, qu=qu)
         # разделение выборки встроено в класс
         self.X_train, self.X_test, self.y_train, self.y_test = model_selection.train_test_split(X, y,
                                                                                                 test_size=test_size,
                                                                                                 random_state=1)
         self.func_dist = func_dist
 
-    def params(self, k_neighbours=1, eta=1):
+    def params(self, k_neighbours=1, eta=1, qu=0.5):
         self.k_neighbours = k_neighbours
         self.eta = eta
+        self.qu = qu
 
-    def fit(self):
+    def predict(self):
         answers = []
         for x in self.X_test:
             test_distances = []
@@ -51,8 +53,11 @@ class GbKnn:
             # создаем словарь со всеми возможными классами
             classes = {class_item: 0 for class_item in set(self.y_train)}
 
+            test_distances = self.ordered(test_distances)
+            # print(test_distances)
+
             # Сортируем список и среди первых k элементов подсчитаем частоту появления разных классов
-            for d in sorted(test_distances)[0:self.k_neighbours]:
+            for d in test_distances[0:self.k_neighbours]:
                 classes[d[1]] += 1
 
             # Записываем в список ответов наиболее часто встречающийся класс
@@ -65,6 +70,9 @@ class GbKnn:
     def quality(self, pred):
         return self.accuracy(pred, self.y_test)
 
+    def ordered(self, distance):
+        return sorted(distance)
+
 
 class EvMetDist(FuncDist):
     def calc(self, x1, x2):
@@ -75,22 +83,43 @@ class EvMetDist(FuncDist):
         return np.sqrt(distance)
 
 
+class GbKnnWNum(GbKnn):
+
+    def ordered(self, distance):
+        w_distance = []
+        for i, (d, y) in enumerate(sorted(distance)):
+            w_distance.append((d * (1 / (i + 1)), y))
+        return sorted(w_distance, reverse=True)
+
+
+class GbKnnWDist(GbKnn):
+
+    def ordered(self, distance):
+        w_distance = []
+        for i, (d, y) in enumerate(distance):
+            w_distance.append((self.qu ** d, y))
+        return sorted(w_distance, reverse=True)
+
+
 X, y = load_iris(return_X_y=True)
 # Для наглядности возьмем только первые два признака (всего в датасете их 4)
 X = X[:, :2]
 
-# X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, test_size=0.2, random_state=1)
+gbknn1 = GbKnn(X, y, EvMetDist(), test_size=0.2)
+gbknn2 = GbKnnWNum(X, y, EvMetDist(), test_size=0.2)
+gbknn3 = GbKnnWDist(X, y, EvMetDist(), test_size=0.2, qu=0.3)
+preds1 = []
+preds_wnum = []
+preds_wdist = []
 
-# k = 3
+for k in range(1, 10):
+    gbknn1.params(k_neighbours=k)
+    gbknn2.params(k_neighbours=k)
+    gbknn3.params(k_neighbours=k)
+    preds1.append(gbknn1.quality(gbknn1.predict()))
+    preds_wnum.append(gbknn2.quality(gbknn2.predict()))
+    preds_wdist.append(gbknn3.quality(gbknn3.predict()))
 
-# y_pred = knn(X_train, y_train, X_test, k)
-
-# print(f'Точность алгоритма при k = {k}: {accuracy(y_pred, y_test):.3f}')
-
-# Точность алгоритма при k = 3: 0.733
-
-gbknn = GbKnn(X, y, EvMetDist(), test_size=0.2, k_neighbours=3)
-y_pred = gbknn.fit()
-print(f'Точность алгоритма при k = {gbknn.k_neighbours}: {gbknn.quality(y_pred):.3f}')
-
-
+print(preds1)
+print(preds_wnum)
+print(preds_wdist)
